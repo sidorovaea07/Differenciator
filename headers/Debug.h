@@ -1,5 +1,5 @@
-#ifndef NEEDED
-#define NEEDED
+#ifndef HEADERS_DEBUG
+#define HEADERS_DEBUG
 
 #include "Colors.h"
 #include <stdio.h>
@@ -10,8 +10,8 @@
     #define PRD(x) printf(BLUE #x " = %d\n" WHITE, (x))
     #define PRU(x) printf(BLUE #x " = %lu\n" WHITE, (x))
     #define PRTF(x) printf(PURPLE "print to file returned %d\n" WHITE, (x))
-    #define FINISH PRINT( PURPLE "finish\n" WHITE );
-    #define PRS(x) printf(BLUE "%s\n" WHITE, x)
+    #define FINISH PRINT( PURPLE "FINISH\n" WHITE );
+    #define PRS(x) printf(BLUE #x ": %s" WHITE, x)
 #else
     #define PRP(x)
     #define PRS(x)

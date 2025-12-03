@@ -33,14 +33,21 @@ ${TO_OBJ}/dump.o: ${TO_SRC}/Dump.cpp
 	${MKDL}
 	${CC} ${TO_SRC}/Dump.cpp ${CFLAGS} ${INCLUDE_DIRS} -c -o ${TO_OBJ}/dump.o
 
-${TO_OBJ}/filework.o: ${TO_SRC}/FileWork.cpp
+${TO_OBJ}/filefuncs.o: ${TO_SRC}/FileFuncs.cpp
 	${MKDO}
 	${MKDP}
 	${MKDL}
-	${CC} ${TO_SRC}/FileWork.cpp ${CFLAGS} ${INCLUDE_DIRS} -c -o ${TO_OBJ}/filework.o
+	${CC} ${TO_SRC}/FileFuncs.cpp ${CFLAGS} ${INCLUDE_DIRS} -c -o ${TO_OBJ}/filefuncs.o
 
-build: ${TO_OBJ}/main.o ${TO_OBJ}/treefuncs.o ${TO_OBJ}/dump.o ${TO_OBJ}/filework.o
-	${CC} ${TO_OBJ}/main.o ${TO_OBJ}/treefuncs.o ${TO_OBJ}/dump.o ${TO_OBJ}/filework.o ${CFLAGS} ${INCLUDE_DIRS} -o ${TO_LOG}/tree
+${TO_OBJ}/calcfuncs.o: ${TO_SRC}/CalcFuncs.cpp
+	${MKDO}
+	${MKDP}
+	${MKDL}
+	${CC} ${TO_SRC}/CalcFuncs.cpp ${CFLAGS} ${INCLUDE_DIRS} -c -o ${TO_OBJ}/calcfuncs.o
+
+
+build: ${TO_OBJ}/main.o ${TO_OBJ}/treefuncs.o ${TO_OBJ}/dump.o ${TO_OBJ}/filefuncs.o ${TO_OBJ}/calcfuncs.o
+	${CC} ${TO_OBJ}/main.o ${TO_OBJ}/treefuncs.o ${TO_OBJ}/dump.o ${TO_OBJ}/filefuncs.o ${TO_OBJ}/calcfuncs.o ${CFLAGS} ${INCLUDE_DIRS} -o ${TO_LOG}/tree
 
 clean:
 	rm -rf ${TO_OBJ}/*.o

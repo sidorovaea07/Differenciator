@@ -2,7 +2,6 @@
 #define HEADERS_DUMP_H
 
 #include "Trees.h"
-#include "Needed.h"
 
 typedef struct files_t
 {
@@ -11,6 +10,7 @@ typedef struct files_t
     const char* htmlfile;
     const char* outxt;
     const char* inputxt;
+    char* tex;
 } files_t;
 
 typedef struct readed_t
@@ -25,11 +25,13 @@ int TxtGenerate(node_t* node, FILE* fp);
 int PngGenerate(files_t *files);
 int TreeDump(node_t *node, files_t *files);
 int SaveToFile(node_t* node, files_t *files);
-tree_t* ReadFromFile(files_t* files, readed_t* read, tree_t** t);
-// node_t* ReadNode(node_t** node, readed_t* read);
 int CleanBuff();
 int OutputName(files_t *files);
 int HtmlGenerate(node_t* node, files_t *files);
-int FilesInit(files_t *files, const char* input, char* output, const char* htmlfile, const char* outxt, const char* inputxt);
+int FilesInit(files_t *files, const char* input, char* outpng, const char* htmlfile, const char* inputxt, const char* outxt, char* outtex);
+int InOrderPrint(node_t* node);
+int TexDump(tree_t* t, const char* tex);
+int NodeTex(node_t* node, FILE* fp);
+char* TexName(files_t *files);
 
 #endif

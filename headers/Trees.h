@@ -1,13 +1,7 @@
 #ifndef HEADER_TREES_H
 #define HEADER_TREES_H
 
-#include "Needed.h"
-
-#define RT (*tree1).root
-
-#define INSERT(to)                          \
-        if (to) NodeInsert(to, in); \
-        else NodeInit((&to), in);
+#include <stdio.h>
 
 #define OK 0
 #define STRSIZE 100
@@ -52,6 +46,8 @@ typedef struct tree_t {
     node_t* root;
     size_t size;
     variables_t* vars;
+    size_t nvars;
+    char difvar;
 } tree_t;
 
 enum cmnds {

@@ -1,10 +1,9 @@
-#include "FileWork.h"
 #include "TreeFuncs.h"
-#include "Trees.h"
-#include "Needed.h"
-#include "Dump.h"
+#include "FileFuncs.h"
+#include "Debug.h"
 #include <stdlib.h>
 #include <math.h>
+#include <ctype.h>
 
 size_t FileSize(FILE *fp)
 {
@@ -25,22 +24,38 @@ FILE* OpenFile(const char *file, const char *mode)
 
 }
 
-char* ReadFile(const char* file, size_t* readsize)
+char* ReadFile(const char* file, size_t* readsize, char** buff)
 {
     FILE *fp = OpenFile(file, "r");
     size_t filesize = FileSize(fp);
     PRU(filesize);
-    char *buff = (char *) calloc(filesize + 3, sizeof (char));
-    *readsize = fread(buff, sizeof (char), filesize, fp);
-    buff[*readsize] = '\n';
-    buff[*readsize + 1] = '\0';
+    *buff = (char *) calloc(filesize + 3, sizeof (char));
+    *readsize = fread(*buff, sizeof (char), filesize, fp);
+    (*buff)[*readsize] = '\n';
+    (*buff)[*readsize + 1] = '\0';
     fclose(fp);
-    return buff;
+    return *buff;
+}
+
+node_t* GetV(char** buff)
+{
+    data_t d = {}; d.var = '\0';
+    node_t* new_node = NodeInit(TYPE_VAR, &d, NULL, NULL);
+    PRINT("in GetV(): ");
+    PRP(new_node);
+    PRS(*buff);
+    if ('a' <= **buff && **buff <= 'z') {
+        new_node->data.var = **buff;
+        (*buff)++;
+    }
+    PRS(*buff);
+    return new_node;
 }
 
 node_t* GetN(char** buff)
 {
-    node_t* new_node = NodeInit(TYPE_NUM, 0, NULL, NULL);
+    data_t d = {}; d.num = 0;
+    node_t* new_node = NodeInit(TYPE_NUM, &d, NULL, NULL);
     PRINT("in GetN(): ");
     PRP(new_node);
     PRS(*buff);
@@ -62,8 +77,10 @@ node_t* GetP(char** buff)
         (*buff)++;
         return new_node;
     }
-    else 
+    else if (isdigit(**buff))
         return GetN(buff);
+    else
+        return GetV(buff);
 }
 
 node_t* GetT(char** buff)
@@ -75,7 +92,8 @@ node_t* GetT(char** buff)
         int op = **buff;
         (*buff)++;
         node_t* new_node_ = GetP(buff);
-        new_node = NodeInit(TYPE_OP, op, new_node, new_node_);
+        data_t d = {}; d.op = (operator_t)op;
+        new_node = NodeInit(TYPE_OP, &d, new_node, new_node_);
     }
     return new_node;   
 }
@@ -89,7 +107,8 @@ node_t* GetE(char** buff)
         int op = **buff;
         (*buff)++;
         node_t* new_node_ = GetT(buff);
-        new_node = NodeInit(TYPE_OP, op, new_node, new_node_);
+        data_t d = {}; d.op = (operator_t)op;
+        new_node = NodeInit(TYPE_OP, &d, new_node, new_node_);
     }
     return new_node;
 }
@@ -99,7 +118,6 @@ node_t* GetG(char** buff)
     PRINT("in GetG(): ");
     PRS(*buff);
     node_t* new_node = GetE(buff);
-    PRINT("in GetG() after GetE(): %p, %d, %d\n", new_node, new_node->type, new_node->data);
     PRINT("in GetG() after GetE(): %s\n", *buff);
     if (**buff != '$') {
         PRINT("*buff != $ in GetG(): %s\n", *buff);
@@ -112,11 +130,13 @@ node_t* GetG(char** buff)
 tree_t* ReadFromFile(files_t* files, readed_t* read, tree_t** t)
 {
     read->size = 0;
-    read->buff = ReadFile(files->inputxt, &read->size);
+    char* iterate = ReadFile(files->inputxt, &read->size, &read->buff);
+    read->buff = iterate;
     PRS(read->buff);
-    TreeInit(t);
+    *t = TreeInit(t);
     (*t)->root = GetG(&read->buff);
     PRP((*t)->root);
+    free(iterate); //TODO - 
     PRINT("\nREADED\n");
     return *t;
 }
