@@ -1,6 +1,8 @@
 #include "TreeFuncs.h"
 #include "FileFuncs.h"
 #include "Debug.h"
+#include "Dump.h"
+#include "DSL.h"
 #include <stdlib.h>
 #include <math.h>
 #include <ctype.h>
@@ -136,9 +138,17 @@ tree_t* ReadFromFile(files_t* files, readed_t* read, tree_t** t)
     *t = TreeInit(t);
     (*t)->root = GetG(&read->buff);
     PRP((*t)->root);
-    free(iterate); //TODO - 
+    free(iterate);
     PRINT("\nREADED\n");
     return *t;
+}
+
+int FilesInit(files_t *files)
+{
+    MAKEDIR(files->input)
+    MAKEDIR(files->htmlfile)    
+    MAKEDIR(files->outxt)
+    RET
 }
 
 int FileNamesDestroy(char* name)

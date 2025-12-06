@@ -1,8 +1,10 @@
 #include "TreeFuncs.h"
 #include "CalcFuncs.h"
 #include "FileFuncs.h"
+#include "VarsFuncs.h"
 #include "Debug.h"
 #include "Dump.h"
+#include "DSL.h"
 
 #include <stdlib.h>
 #include <math.h>
@@ -10,8 +12,8 @@
 tree_t* TreeInit(tree_t** t)
 {
     *t = (tree_t *) calloc(1, sizeof(tree_t));
-    (*t)->root = NodeInit(TYPE_NONE, NULL, NULL, NULL);
-    (*t)->root->parent = NULL;
+    RT = NodeInit(TYPE_NONE, NULL, NULL, NULL);
+    RT->parent = NULL;
     (*t)->size = 0;
     (*t)->nvars = 0;
     return *t;
@@ -20,27 +22,30 @@ tree_t* TreeInit(tree_t** t)
 node_t* NodeInit(type_t type, data_t* data, node_t* left, node_t* right)
 {
     node_t* node = (node_t *) calloc(1, sizeof(node_t));
-    node->type = type;
-    node->left = left;
-    node->right = right;
-    if (node->left)
-        node->left->parent = node;
-    if (node->right)
-        node->right->parent = node;
+    NT = type;
+    L = left;
+    R = right;
+    if (L)
+        L->parent = node;
+    if (R)
+        R->parent = node;
     switch (type) {
-        case TYPE_OP: node->data.op = data->op; break;
-        case TYPE_VAR: node->data.var = data->var; break;
-        case TYPE_NUM: node->data.num = data->num; break;
-        case TYPE_NONE: node->data.num = POISON; break;
-        default: printf("UNKNOWN TYPE\n");    
+        OP 
+            ND.op = data->op; break;
+        VAR 
+            ND.var = data->var; break;
+        NUM 
+            ND.num = data->num; break;
+        NONE 
+            ND.num = POISON; break;
+        DFLT    
     }
     return node;
 }
 
-int CleanBuff()
+void CleanBuff()
 {
     while (getchar() != '\n');
-    return OK;
 }
 
 int TreeProcess(tree_t** t, files_t* files)
@@ -52,20 +57,23 @@ int TreeProcess(tree_t** t, files_t* files)
         switch (w) {
             case 'c':
                 GetVariables(t);    
-                printf(GREEN "\nTHE ANSWER IS: %g\n" WHITE, TreeCalculate((*t)->root, t));
+                printf(GREEN "\nTHE ANSWER IS: %g\n" WHITE, TreeCalculate(RT, t));
                 break;
             case 'p':
-                InOrderPrint((*t)->root);
+                InOrderPrint(RT);
                 putchar('\n');
                 break;
             case 'v':
-                TreeDump((*t)->root, files);
+                TreeDump(RT, files);
                 break;
             case 't':
-                TexDump(*t, TexName(files));
+                StartTex(files);
+                TexDump(*t, files->tex);
                 break;
             case 'd': {
                 tree_t* t_ = TreeDiff(t);
+                DO(InOrderPrint(t_->root));
+                DO(putchar('\n'));
                 t_->nvars = (*t)->nvars;
                 t_->size = (*t)->size;
                 t_->vars = (variables_t* )calloc(t_->nvars, sizeof(variables_t));
@@ -79,15 +87,19 @@ int TreeProcess(tree_t** t, files_t* files)
             }
             case 'o': {
                 size_t i = 0;
-                do {
-                    (*t)->root = TreeOptimize1(t, (*t)->root, &i);
-                } while (i);
-                (*t)->root = TreeOptimize2(t, (*t)->root, &i);
+                RT = TreeOptimize1(t, RT, &i);
+                PRS("optimized 1\n");
+                DO(TreeDump(RT, files));
+                DO(InOrderPrint(RT));
+                RT = TreeOptimize2(t, RT, &i);   
+                PRS("optimized 2\n");
+                DO(TreeDump(RT, files));
                 break;
             }
             case 'q':
+                EndTex(files);
                 TreeDestroy(t);
-                return OK;
+                RET
                 break;
             default:
                 printf("Your symbol is: %c. Try again.\n", w);
@@ -95,26 +107,26 @@ int TreeProcess(tree_t** t, files_t* files)
         }
         CleanBuff();
     }
-    return OK;    
+    RET    
 }
 
-int NodeDestroy(node_t* node)
+node_t* NodeDestroy(node_t* node)
 {
-    if (node->left) {
-        NodeDestroy(node->left);
-    }
-    if (node->right) {
-        NodeDestroy(node->right);
-    }
+    if (!node)
+        return NULL;
+    if (L)
+        NDL_
+    if (R)
+        NDR_
     free(node);
-    node = NULL;
-    return OK;
+    return NULL;
 }
 
 int TreeDestroy(tree_t** t)
 {
-    NodeDestroy((*t)->root);
+    NodeDestroy(RT);
+    PRP(RT);
     free((*t)->vars);
     free(*t);
-    return OK;
+    RET
 }

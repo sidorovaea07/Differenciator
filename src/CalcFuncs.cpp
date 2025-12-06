@@ -2,66 +2,53 @@
 #include "CalcFuncs.h"
 #include "FileFuncs.h"
 #include "Debug.h"
+#include "DSL.h"
+#include "VarsFuncs.h"
 
 #include <stdlib.h>
 #include <math.h>
-
-#define IS_0(node, t) (!VarsChecker(node, t) && fabs(TreeCalculate(node, t)) < __DBL_MIN__)
-#define CALC_L
-
+#define NCPY(x) x->left->parent = x->right->parent = x->parent; \
+                x->parent->left = x->left;                      \
+                x->parent->right = x->right;                    \
+                x->parent->type = x->type;                      \
+                x->parent->data = x->data;
 
 elem_t TreeCalculate(node_t* node, tree_t** t)
 {
-    if (!node) return 0;
-    switch (node->type) {
-        case TYPE_NUM:
-            return node->data.num;
-        case TYPE_VAR:
-            PRINT("working with %c\n", node->data.var);
+    ASSERT_N
+    switch (NT) {
+        NUM
+            return ND.num;
+        VAR
+            PRINT("working with %c\n", ND.var);
             PRU((*t)->nvars);
-            FindVar(t, node->data.var);
+            FindVar(t, ND.var);
             return (*t)->vars[(*t)->nvars - 1].val;
-        case TYPE_OP:
-            switch (node->data.op) {
+        OP
+            switch (ND.op) {
                 case ADD:
-                    return TreeCalculate(node->left, t) + TreeCalculate(node->right, t);
+                    return TreeCalculate(L, t) + TreeCalculate(R, t);
                 case SUB:
-                    return TreeCalculate(node->left, t) - TreeCalculate(node->right, t);
+                    return TreeCalculate(L, t) - TreeCalculate(R, t);
                 case MUL:
-                    return TreeCalculate(node->left, t) * TreeCalculate(node->right, t);
+                    return TreeCalculate(L, t) * TreeCalculate(R, t);
                 case DIV: {
-                    elem_t den = TreeCalculate(node->right, t);
+                    elem_t den = TreeCalculate(R, t);
                     if ((fabs(den) < __DBL_MIN__)) {
                         printf("We can't div on null\n");
-                        return 0;
+                        RET
                     }
                     else 
-                        return TreeCalculate(node->left, t) / TreeCalculate(node->right, t);
+                        return TreeCalculate(L, t) / TreeCalculate(R, t);
                 }
                 case POW:
-                    return pow(TreeCalculate(node->left, t), TreeCalculate(node->right, t));
-                default:
-                    PRINT("DEFAULT CASE OF TREECALCULATE() REACHED\n");
-                    break;
+                    return pow(TreeCalculate(L, t), TreeCalculate(R, t));
+                DFLT
             }
-        case TYPE_NONE: break;
-        default:
-            PRINT("DEFAULT CASE OF TREECALCULATE() REACHED\n");
+        NONE
+        DFLT
     }
     return POISON;
-}
-
-elem_t FindVar(tree_t** t, char var)                
-{
-    for (size_t i = 0; i < (*t)->nvars; i++) {
-        PRINT("%c...\n", (*t)->vars[i].name);
-        if ((*t)->vars[i].name == var) {
-            PRD((int)(*t)->vars[i].val);
-            return (*t)->vars[i].val;
-        }
-    }
-    return VarsRealloc(t, var);
-    
 }
 
 tree_t* TreeDiff(tree_t** t)
@@ -71,39 +58,42 @@ tree_t* TreeDiff(tree_t** t)
     printf("By which variable do you want to differentiate: ");
     scanf("%*c%c", &(*t)->difvar);
     CleanBuff();
-    (*ans).root = NodeDiff((*t)->root, (*t)->difvar);
+    (*ans).root = NodeDiff(RT, (*t)->difvar);
+    PRP((*ans).root);
     return ans;
 }
 
 node_t* NodeCpy(node_t* old_) 
 {
-    node_t* new_ = (node_t* )calloc(1, sizeof(node_t));
-    new_->data = old_->data;
-    new_->type = old_->type;
+    node_t* node = (node_t* )calloc(1, sizeof(node_t));
+    ND = old_->data;
+    NT = old_->type;
     if (old_->left)
-        new_->left = NodeCpy(old_->left);
+        L = NodeCpy(old_->left);
     else
-        new_->left = NULL;
+        L = NULL;
     if (old_->right)
-        new_->right = NodeCpy(old_->right);
+        R = NodeCpy(old_->right);
     else 
-        new_->right = NULL;
-    return new_;
+        R = NULL;
+    return node;
 }
 
 node_t* NodeDiff(node_t* old_, char difvar)
 {
-    node_t* new_ = {};
+    node_t* node = {};
     data_t add = {ADD}, mul = {MUL}, num0 = {}, num1 = {}, div = {DIV}, pow = {POW}, num2 = {}, sub = {SUB}; num2.num = 2; num0.num = 0; num1.num = 1;
+    if (!old_)
+        return NULL;
     switch (old_->type) {
-        case (TYPE_NUM):
-            return NodeInit(TYPE_NUM, &num0, NULL, NULL);
-        case (TYPE_VAR):
+        NUM
+            return INIT_NUM(num0)
+        VAR
             if (old_->data.var == difvar)
-                return NodeInit(TYPE_NUM, &num1, NULL, NULL);
+                return INIT_NUM(num1)
             else
-                return NodeInit(TYPE_NUM, &num0, NULL, NULL);
-        case (TYPE_OP):
+                return INIT_NUM(num0)
+        OP
             switch (old_->data.op) {
                 case ADD:
                 case SUB:
@@ -120,139 +110,141 @@ node_t* NodeDiff(node_t* old_, char difvar)
                                     NodeInit(TYPE_OP, &pow,                                                             \
                                             NodeCpy(old_->right),                                                       \
                                             NodeInit(TYPE_NUM, &num2, NULL, NULL)));
-                case POW:
-                default: 
-                    break;
+                case POW: 
+                    return NULL;
+                DFLT
             }
-        case TYPE_NONE:
-        default:
-            break;        
-    }
-
-    return new_;
-    
-}
-
-int GetVariables(tree_t** t)
-{
-    InOrderPrint((*t)->root);
-    printf(GREEN "\nHOW MANY VARIABLES DO YOU WANT TO ADD? " WHITE);
-    scanf("%lu", &(*t)->nvars);
-    PRU((*t)->nvars);
-    (*t)->vars = (variables_t* )calloc((*t)->nvars, sizeof(variables_t));
-    for (size_t i = 0; i < (*t)->nvars; i++) {
-        scanf("%*c%c%lg", &(*t)->vars[i].name, &(*t)->vars[i].val);
-        printf("added: %c\n", (*t)->vars[i].name);
-    }
-    return OK;
-}
-
-elem_t VarsRealloc(tree_t** t, char var)
-{
-    (*t)->nvars++;
-    (*t)->vars = (variables_t* )realloc((*t)->vars, (*t)->nvars*sizeof(variables_t));
-    (*t)->vars[(*t)->nvars - 1].name = var;
-    printf(RED "YOU HAVEN'T MENTIONED %c IN VARIABLES. ENTER IT'S VALUE: " WHITE, var);
-    CleanBuff();
-    scanf("%lg", &(*t)->vars[(*t)->nvars - 1].val);
-    return (*t)->vars[(*t)->nvars - 1].val;
-}
-
-node_t* TreeOptimize1(tree_t** t, node_t* node, size_t* i)
-{
-    data_t num0 = {}; num0.num = 0;
-    if (IS_0(node, t)) {
-        i++;
-        if (node->left) NodeDestroy(node->left);
-        if (node->right) NodeDestroy(node->right);
-        return NodeInit(TYPE_NUM, &num0, NULL, NULL);
-    }
-    else {
-        if (node->left) {
-            node->left = TreeOptimize1(t, node->left, i);
-        }
-        if (node->right) {
-            node->right = TreeOptimize1(t, node->right, i);
-        }
+        NONE
+        DFLT      
     }
     return node;
 }
 
-int VarsChecker(node_t* node, tree_t** t)
+node_t* TreeOptimize1(tree_t** t, node_t* node, size_t* i)
 {
-    if (!node) return 0;
-    switch (node->type) {
-        case TYPE_NUM:
-            return 0;
-        case TYPE_VAR:
-            return 1;
-        case TYPE_OP:
-            return (VarsChecker(node->left, t) + VarsChecker(node->right, t));
-        case TYPE_NONE: break;
-        default:
-            PRINT("DEFAULT CASE OF TREECALCULATE() REACHED\n");
+    ASSERT_N
+    data_t num = {}; num.num = NAN;
+
+    if (node->type == TYPE_OP && !VarsChecker(node)) {
+        num.num = TreeCalculate(node, t);
+        (*i)++;
+        return NodeInit(TYPE_NUM, &num, NDL, NDR);
     }
-    return 0;
+
+    return NodeInit(node->type, &node->data, TreeOptimize1(t, L, i), TreeOptimize1(t, R, i));
+}
+
+elem_t Optimizer(node_t* node, tree_t** t)
+{
+    ASSERT_N
+    switch (NT) {
+        NUM
+            return ND.num;
+        VAR
+            return NAN;
+        OP
+            switch (ND.op) {
+                case ADD:
+                    return Optimizer(L, t) + Optimizer(R, t);
+                case SUB:
+                    return Optimizer(L, t) - Optimizer(R, t);
+                case MUL:
+                    if ((L->type == TYPE_VAR && IS_0(R, t)) || (R->type == TYPE_VAR && IS_0(L, t)))
+                        return 0;
+                    return Optimizer(L, t) * Optimizer(R, t);
+                case DIV: {
+                    elem_t den = Optimizer(R, t);
+                    elem_t numer = Optimizer(L, t);
+                    if ((fabs(den) < __DBL_MIN__)) {
+                        printf("We can't div on null\n");
+                        RET
+                    }
+                    if ((fabs(numer) < __DBL_MIN__)) {
+                        RET
+                    }
+                    return numer / den;
+                }
+                case POW:
+                    return pow(Optimizer(L, t), Optimizer(R, t));
+                DFLT
+            }
+        NONE
+        DFLT
+    }
+    return NAN;
 }
 
 node_t* TreeOptimize2(tree_t** t, node_t* node, size_t* i)
 {
-    if (node->type == TYPE_OP) {
-        switch (node->data.op) {
+    data_t num0 = {}; num0.num = 0;
+    ASSERT_N
+    if (NT == TYPE_OP) {
+        elem_t opt_l = Optimizer(L, t);
+        elem_t opt_r = Optimizer(R, t);
+        if (!IS_opt(opt_l) && !IS_opt(opt_r)) {
+            if (L)
+                L = TreeOptimize2(t, L, i);
+            if (R)
+                R = TreeOptimize2(t, R, i);
+        }
+        switch (ND.op) {
             case ADD:
-                if (IS_0(node->left, t)) {
-                    NodeDestroy(node->left);
+                if (IS_opt(opt_l)) {
+                    (*i)++;
+                    L = NDL;
+                    NCPY(R)
+                    break;
                 }
-                if (IS_0(node->right, t)) {
-                    NodeDestroy(node->right);
-                }
-                break;
-            case MUL:
-                if (IS_0(node->left, t) || IS_0(node->right, t)) {
-                    NodeDestroy(node->left);
-                    NodeDestroy(node->right);
-                    node->type = TYPE_NUM;
-                    node->data.num = 0;
-                }
-                break;
-            case POW:
-                if (IS_0(node->left, t)) {
-                    NodeDestroy(node->left);
-                    NodeDestroy(node->right);
-                    node->type = TYPE_NUM;
-                    node->data.num = 0;
-                }
-                else if (IS_0(node->right, t)) {
-                    NodeDestroy(node->right);
-                    node->type = node->left->type;
-                    node->data = node->left->data;
-                    NodeDestroy(node->left);
+                if (IS_opt(opt_r)) {
+                    (*i)++;
+                    R = NDR;
+                    NCPY(L)
                 }
                 break;
             case SUB:
-                if (IS_0(node->right, t)) {
-                    NodeDestroy(node->right);
-                    node->type = node->left->type;
-                    node->data = node->left->data;
-                    NodeDestroy(node->left);
+                if (IS_opt(opt_r)) {
+                    PRINT("in sub:\n"); PRP(node->right);
+                    (*i)++;
+                    R = NDR;
+                    NCPY(L)
+                }
+                break;
+            case MUL:
+                if (IS_opt(opt_l) || IS_opt(opt_r)) {
+                    (*i)++;
+                    L = NDL;
+                    R = NDR;
+                    node = NodeDestroy(node);
+                    return INIT_NUM(num0);
+                }
+                break;
+            case POW:
+                if (IS_opt(opt_l)) {
+                    (*i)++;
+                    node = NodeDestroy(node);
+                    return INIT_NUM(num0);
+                }
+                if (IS_opt(opt_r)) {
+                    (*i)++;
+                    R = NDR;
+                    L->left->parent = L->right->parent = L->parent;
+                    L->parent->left = L->left;
+                    L->parent->right = L->right;
+                    L->parent->type = L->type;
+                    L->parent->data = L->data;
                 }
                 break;
             case DIV:
-                if (IS_0(node->left, t)) {
-                    NodeDestroy(node->left);
-                    NodeDestroy(node->right);
-                    node->type = TYPE_NUM;
-                    node->data.num = 0;
+                if (IS_opt(opt_r)) {
+                    (*i)++;
+                    node = NodeDestroy(node);
+                    return INIT_NUM(num0);
                 }
                 break;
-            default:
-                PRINT("DEFAULT CASE OF TREEOPTIMIZE2() REACHED\n");       
+            DFLT       
         }
     }
-    else {
-        node->left = TreeOptimize2(t, node->left, i);
-        node->right = TreeOptimize2(t, node->right, i);
-    }
+    
     return node;
 }
 

@@ -12,6 +12,7 @@
     #define PRTF(x) printf(PURPLE "print to file returned %d\n" WHITE, (x))
     #define FINISH PRINT( PURPLE "FINISH\n" WHITE );
     #define PRS(x) printf(BLUE #x ": %s" WHITE, x)
+    #define DO(x) x
 #else
     #define PRP(x)
     #define PRS(x)
@@ -19,7 +20,8 @@
     #define PRU(x)
     #define PRTF(x)
     #define PRINT(fmt, ...)
-    #define FINISH   
+    #define FINISH
+    #define DO(x)   
 #endif
 
 #endif

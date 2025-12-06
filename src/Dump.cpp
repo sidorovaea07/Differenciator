@@ -1,37 +1,16 @@
 #include "Dump.h"
 #include "Debug.h"
 #include "FileFuncs.h"
+#include "DSL.h"
+
+#define TEX_(s1, s2, s3)    fprintf(fp, s1);           \
+                            NodeTex(L, fp);             \
+                            fprintf(fp, s2);           \
+                            NodeTex(R, fp);             \
+                            fprintf(fp, s3)            \
+;
 
 #include <stdlib.h>
-
-#define CREATE_NODE(col, mode, op, pole)                                                                                                                                                \
-        fprintf(fp, "\t _%p_ [shape = Mrecord; style = filled; fillcolor = pink2; color = " #col ";", node);                  \
-        fprintf(fp, " label = \"{parent = %p | type = " #op " |ptr = %p | data = " mode " | left = %p | right = %p}\"]\n",      \
-                            node->parent, node, node->data.pole, node->left, node->right);
-
-#define CREATE_LINK(x, y)                                                                                        \
-        fprintf(fp, "\t_%p_->_%p_ [color = blue]\n", x, y);
-
-#define MAKEDIR(name) do {                                                            \
-                        char* iterate = (char *)calloc(STRSIZE, sizeof(char));        \
-                        sprintf(iterate, "touch %s", name);                           \
-                        system(iterate);                                              \
-                        free(iterate);                                                \
-                    } while (0);
-
-int FilesInit(files_t *files, const char* input, char* outpng, const char* htmlfile, const char* inputxt, const char* outxt, char* outtex)
-{
-    MAKEDIR(input)
-    MAKEDIR(htmlfile)    
-    MAKEDIR(outxt)
-    files->input = input;
-    files->outpng = outpng;
-    files->htmlfile = htmlfile;
-    files->outxt = outxt;
-    files->inputxt = inputxt;
-    files->tex = outtex;
-    return OK;
-}
 
 int HtmlGenerate(node_t* node, files_t *files)
 {
@@ -40,25 +19,25 @@ int HtmlGenerate(node_t* node, files_t *files)
     PreOrderPrint(node, fp);
     fprintf(fp, "<h2> IMAGE: </h2> \n<img src = %s width = 500px> \n", files->outpng);
     fclose(fp);
-    return OK;
+    RET
 }
 
 int PreOrderPrint(node_t* node, FILE* fp)
 {
-    fprintf(fp, "(\"%p\"", &node->data);
-    if (node->left) {
-        PreOrderPrint(node->left, fp);
+    fprintf(fp, "(\"%p\"", &ND);
+    if (L) {
+        PreOrderPrint(L, fp);
     }
     else {
         fprintf(fp, "nil");
     }
-    if (node->right) 
-        PreOrderPrint(node->right, fp);
+    if (R) 
+        PreOrderPrint(R, fp);
     else {
         fprintf(fp, "nil");
     }
     fprintf(fp, ")");
-    return OK;
+    RET
 }
 
 int SaveToFile(node_t* node, files_t* files)
@@ -66,39 +45,41 @@ int SaveToFile(node_t* node, files_t* files)
     FILE* fp = fopen(files->outxt, "w");
     PreOrderPrint(node, fp);
     fclose(fp);
-    return OK;
+    RET
 }
 
 int TxtGenerate(node_t* node, FILE* fp)
 {
-    if (node->left) {
-        TxtGenerate(node->left, fp);
-        CREATE_LINK(node, node->left);
+    if (!node) {
+        fprintf(fp, "\t _(nil)_ [shape = Mrecord; style = filled; fillcolor = red; color = blue; label = nil]");
     }
 
-    switch (node->type) {
-        case TYPE_OP:
+    if (L) {
+        TxtGenerate(L, fp);
+        CREATE_LINK(node, L);
+    }
+
+    switch (NT) {
+        OP
             CREATE_NODE(pink2, "%c", TYPE_OP, op);
             break;
-        case TYPE_NONE:
+        NONE
             CREATE_NODE(red, "%g", TYPE_NONE, num);
             break;
-        case TYPE_NUM:
+        NUM
             CREATE_NODE(green, "%g", TYPE_NUM, num);
             break;
-        case TYPE_VAR:
+        VAR
             CREATE_NODE(blue, "%c", TYPE_VAR, var);
             break;
-        default:
-            PRINT("UNKNOWN TYPE IN TXTGENERATE()");
-            break;
+        DFLT
     }
 
-    if (node->right) {
-        TxtGenerate(node->right, fp);
-        CREATE_LINK(node, node->right);
+    if (R) {
+        TxtGenerate(R, fp);
+        CREATE_LINK(node, R);
     }
-    return OK;
+    RET
 }
 
 int PngGenerate(files_t *files)
@@ -108,7 +89,7 @@ int PngGenerate(files_t *files)
     PRS(str);
     int ret_val = system(str);
     PRD(ret_val);
-    return OK;
+    RET
 }
 
 int OutputName(files_t *files)
@@ -119,7 +100,7 @@ int OutputName(files_t *files)
     scanf("%9s", name);
     sprintf(files->outpng, "pictures/%s.png\n", name);
     PRS(files->outpng);
-    return OK;
+    RET
 }
 
 int TreeDump(node_t *node, files_t *files)
@@ -137,27 +118,34 @@ int TreeDump(node_t *node, files_t *files)
     PngGenerate(files);
     HtmlGenerate(node, files);
     free(files->outpng);
-    return OK;
+    RET
 }
 
 int InOrderPrint(node_t* node)
 {
     putchar('(');
-    if (node->left) 
-        InOrderPrint(node->left);
+    ASSERT_N
+    if (L) 
+        InOrderPrint(L);
 
-    switch (node->type) {
-        case TYPE_OP: printf(" %c ", node->data.op); break;
-        case TYPE_VAR: printf(" %c ", node->data.var); break;
-        case TYPE_NUM: printf(" %lg ", node->data.num); break;
-        case TYPE_NONE:
-        default: printf("UNKNOWN TYPE\n");    
+    switch (NT) {
+        OP 
+            printf(" %c ", ND.op); 
+            break;
+        VAR 
+            printf(" %c ", ND.var); 
+            break;
+        NUM 
+            printf(" %lg ", ND.num); 
+            break;
+        NONE
+        DFLT
     }    
     
-    if (node->right) 
-        InOrderPrint(node->right);
+    if (R) 
+        InOrderPrint(R);
     putchar(')');
-    return OK;
+    RET
 }
 
 char* TexName(files_t *files)
@@ -173,81 +161,75 @@ char* TexName(files_t *files)
 
 int NodeTex(node_t* node, FILE* fp)
 {
-    switch (node->type) {
-        case TYPE_NUM:
-            fprintf(fp, " %g ", node->data.num);
+    ASSERT_N
+    switch (NT) {
+        NUM
+            fprintf(fp, " %g ", ND.num);
             break;
-        case TYPE_VAR:
-            fprintf(fp, " %c ", node->data.var);
+        VAR
+            fprintf(fp, " %c ", ND.var);
             break;
-        case TYPE_OP:
-            switch (node->data.op) {
+        OP
+            switch (ND.op) {
                 case ADD:
-                    NodeTex(node->left, fp);
-                    fprintf(fp, "+");
-                    NodeTex(node->right, fp);
+                    TEX_("", "+", "")
                     break;
                 case SUB:
-                    NodeTex(node->left, fp);
-                    fprintf(fp, "+");
-                    NodeTex(node->right, fp);
+                    TEX_("", "-", "")
                     break;
                 case MUL:
-                    fprintf(fp, "(");
-                    NodeTex(node->left, fp);
-                    fprintf(fp, ") \\cdot (");
-                    NodeTex(node->right, fp);
-                    fprintf(fp, ")");
+                    TEX_("(", ") \\cdot (", ")")
                     break;
-                case DIV: {
-                    fprintf(fp, "\\frac{");
-                    NodeTex(node->left, fp);
-                    fprintf(fp, "}{");
-                    NodeTex(node->right, fp);
-                    fprintf(fp, "}");
+                case DIV:
+                    TEX_("\\frac{", "}{", "}")
                     break;
-                }
                 case POW:
-                    fprintf(fp, "(");
-                    NodeTex(node->left, fp);
-                    fprintf(fp, ")^{");
-                    NodeTex(node->right, fp);
-                    fprintf(fp, "}");
+                    TEX_("(", ")^{", "}")
                     break;
-                default:
-                    PRINT("DEFAULT CASE - UNKNOWN OPERATOR() REACHED\n");
-                    break;
+                DFLT
             }
-        case TYPE_NONE: break;
-        default:
-            PRINT("DEFAULT CASE OF NODETEX() REACHED\n");
+        NONE break;
+        DFLT
     }
-    return OK;
+    RET
 }
-//                 "\\usepackage[T2A]{fontenc}\n"   
-                // "\\usepackage{listings}\n"
-           
+
+int StartTex(files_t* files)
+{
+    if (files->st_tex) RET
+
+    TexName(files);
+    FILE *fp = OpenFile(files->tex, "w");
+    fprintf(fp, "\\documentclass[12pt,a4paper]{article}\n\\begin{document}\n");
+    fclose(fp);
+    files->st_tex++;
+    
+    RET
+}
+
 int TexDump(tree_t* t, const char* tex)
 {
-    FILE *fp = OpenFile(tex, "w+");
-    fprintf(fp, "\\documentclass[12pt,a4paper]{article}\n"  \
-                "\\usepackage[utf8]\n"                      \
-                "\\usepackage[english]\n"                   \
-                "\\usepackage{xcolor}\n"                    \
-                "\\usepackage{geometry}\n"                  \
-                "\\usepackage{caption}\n"                   \
-                "\\geometry{left=2cm,right=2cm,top=2cm,bottom=2cm}\n" \
-                "\\begin{document}\n"
-    );
+    FILE *fp = OpenFile(tex, "a+");
+
     fprintf(fp, "\\[");
     NodeTex(t->root, fp);
     fprintf(fp, "\\]\n");
-    fprintf(fp, "\n\\end{document}\n");
     fclose(fp);
 
+    RET
+}
+
+int EndTex(files_t* files)
+{
+    if (!files->st_tex) RET
+
+    FILE *fp = OpenFile(files->tex, "a+");
+    fprintf(fp, "\n\\end{document}\n");
+    fclose(fp);
     char* str = (char* )calloc(STRSIZE, sizeof(char));
-    sprintf(str, "pdflatex %s", tex);
+    sprintf(str, "pdflatex %s", files->tex);
     PRD(system(str));
     free(str);
-    return OK;
+    free(files->tex);
+    RET    
 }

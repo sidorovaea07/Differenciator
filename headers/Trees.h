@@ -50,11 +50,4 @@ typedef struct tree_t {
     char difvar;
 } tree_t;
 
-enum cmnds {
-    INIT_WITH_STR,
-    INIT_WITH_SCANF,
-    CHANGE_WITH_SCANF,
-    SIMPLE_INIT,
-};
-
 #endif
